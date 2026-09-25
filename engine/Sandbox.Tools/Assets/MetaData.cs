@@ -26,19 +26,21 @@ namespace Editor
 		/// </summary>
 		JsonElement? Read()
 		{
-			if ( !System.IO.File.Exists( FilePath ) )
+			var recasedPath = CaseInsensitivePhysicalFileSystem.ResolveNativeCasing( FilePath );
+
+			if ( !System.IO.File.Exists( recasedPath ) )
 				return null;
 
 			try
 			{
-				var json = System.IO.File.ReadAllText( FilePath );
+				var json = System.IO.File.ReadAllText( recasedPath );
 
 				var document = JsonDocument.Parse( json, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip } );
 				return document.RootElement;
 			}
 			catch ( System.Exception e )
 			{
-				Log.Warning( e, $"Couldn't parse '{FilePath}' ({e.Message})" );
+				Log.Warning( e, $"Couldn't parse '{recasedPath}' ({e.Message})" );
 				return null;
 			}
 		}
@@ -61,11 +63,14 @@ namespace Editor
 		void Save( JsonObject obj )
 		{
 			const int retries = 10;
+
+			var recasedPath = CaseInsensitivePhysicalFileSystem.ResolveNativeCasing ( FilePath );
+
 			for ( var i = 0; i < retries; i++ )
 			{
 				try
 				{
-					using ( var stream = System.IO.File.Open( FilePath, System.IO.FileMode.Create ) )
+					using ( var stream = System.IO.File.Open( recasedPath, System.IO.FileMode.Create ) )
 					{
 						using ( Utf8JsonWriter writer = new Utf8JsonWriter( stream, new JsonWriterOptions { Indented = true, SkipValidation = true } ) )
 						{
@@ -78,7 +83,7 @@ namespace Editor
 				catch ( System.IO.IOException ex )
 				{
 					const int delay = 100;
-					Log.Warning( $"Failed to save {FilePath} ({ex.Message}). Retrying in {delay}ms... ({i + 1}/{retries})" );
+					Log.Warning( $"Failed to save {recasedPath} ({ex.Message}). Retrying in {delay}ms... ({i + 1}/{retries})" );
 					System.Threading.Thread.Sleep( delay );
 				}
 			}
@@ -164,5 +169,47 @@ namespace Editor
 
 			Save( writer );
 		}
+
+		// //nuclear option, full recase, lol!
+		// static string RecasePath( string path )
+		// {
+		// 	string[] splitPath = path.Split( '/', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries );
+
+		// 	//re-root
+		// 	splitPath[0] = '/' + splitPath[0];
+
+		// 	string recasedPath = splitPath[0];
+
+		// 	//shouldn't happen
+		// 	bool isNextEntryAFile = splitPath.Length == 2;
+
+		// 	//start after the root path
+		// 	for ( int splitPath_Index = 1; splitPath_Index < splitPath.Length; splitPath_Index++ )
+		// 	{
+		// 		if ( isNextEntryAFile )
+		// 		{
+		// 			foreach ( var dirFiles in Directory.GetFiles( recasedPath ) )
+		// 			{
+		// 				var combinedPath = Path.Combine(  );
+		// 			}
+		// 		}
+		// 		else
+		// 		{
+		// 			foreach ( var dirSubDirectories in Directory.GetDirectories( recasedPath ) )
+		// 			{
+		// 				var combinedPath = Path.Combine( recasedPath, splitPath[splitPath_Index] );
+
+		// 				if ( string.Compare( combinedPath, dirSubDirectories, ignoreCase: true ) == 0 )
+		// 				{
+		// 					recasedPath = combinedPath;
+		// 				}
+		// 			}
+		// 		}
+
+		// 		isNextEntryAFile = splitPath_Index + 1 == splitPath_Index - 1;
+		// 	}
+
+		// 	return null;
+		// }
 	}
 }
