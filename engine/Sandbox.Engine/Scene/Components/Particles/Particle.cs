@@ -67,6 +67,17 @@ public partial class Particle : IDynamicFloatContext
 	public Vector3 StartPosition;
 
 	/// <summary>
+	/// A callback that gets invoked when this particle hits something.
+	/// </summary>
+	public Action<Particle, SceneTraceResult> OnCollision { get; set; }
+
+	/// <summary>
+	/// A callback that gets invoked just before this particle starts tracing.
+	/// You can modify the provided SceneTrace request, or make a new one.
+	/// </summary>
+	public Func<Particle, SceneTrace, SceneTrace> OnPreTrace { get; set; }
+
+	/// <summary>
 	/// A range from 0 to 1 descriving how long this particle has been alive
 	/// </summary>
 	public float LifeDelta;
@@ -213,14 +224,23 @@ public partial class Particle : IDynamicFloatContext
 
 		var targetPosition = Position + Velocity * dt;
 
-		var tr = trace.Ray( Position, targetPosition )
-										.Radius( radius * Radius )
-										.Run();
+		var collisionTrace = trace.Ray( Position, targetPosition )
+										.Radius( radius * Radius );
+
+		if ( OnPreTrace != null ) 
+		{
+			collisionTrace = OnPreTrace( this, collisionTrace );
+		}
+
+		var tr = collisionTrace.Run();
+
 		if ( !tr.Hit )
 		{
 			Position = targetPosition;
 			return false;
 		}
+
+		OnCollision?.Invoke( this, tr );
 
 		//
 		// If we want to die on collision then set its age to max
