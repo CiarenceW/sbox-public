@@ -145,6 +145,8 @@ public partial class Particle : IDynamicFloatContext
 		p.hasUpdated = false;
 		p.AttachBoneIndex = -1;
 		p.AttachTarget = null;
+		p.OnCollision = null;
+		p.OnPreTrace = null;
 
 		return p;
 	}
